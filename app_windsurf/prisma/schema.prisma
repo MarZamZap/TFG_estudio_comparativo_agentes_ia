@@ -1,0 +1,292 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// MAESTROS - Entidades base del sistema
+// ============================================================
+
+model Tienda {
+  id              Int      @id @default(autoincrement()) @map("id_tienda")
+  nombreComercial String   @map("nombre_comercial") @db.VarChar(150)
+  cif             String   @unique @db.VarChar(20)
+  direccion       String?  @db.VarChar(300)
+  ciudad          String?  @db.VarChar(100)
+  codigoPostal    String?  @map("codigo_postal") @db.VarChar(10)
+  telefono        String?  @db.VarChar(20)
+  email           String?  @db.VarChar(150)
+  activa          Boolean  @default(true)
+  fechaCreacion   DateTime @default(now()) @map("fecha_creacion")
+
+  usuarios                 Usuario[]
+  stocks                   Stock[]
+  operacionesCabecera      OperacionCabecera[]   @relation("TiendaPrincipal")
+  cajaMovimientos          CajaMovimiento[]
+  traspasosOrigen          OperacionCabecera[]   @relation("TraspasoOrigen")
+  traspasosDestino         OperacionCabecera[]   @relation("TraspasoDestino")
+
+  @@map("tienda")
+}
+
+model Proveedor {
+  id            Int      @id @default(autoincrement()) @map("id_proveedor")
+  nombre        String   @db.VarChar(150)
+  cifNif        String   @unique @map("cif_nif") @db.VarChar(20)
+  direccion     String?  @db.VarChar(300)
+  ciudad        String?  @db.VarChar(100)
+  codigoPostal  String?  @map("codigo_postal") @db.VarChar(10)
+  telefono      String?  @db.VarChar(20)
+  emailPedidos  String?  @map("email_pedidos") @db.VarChar(150)
+  personaContacto String? @map("persona_contacto") @db.VarChar(150)
+  activo        Boolean  @default(true)
+  fechaCreacion DateTime @default(now()) @map("fecha_creacion")
+
+  productos              Producto[]
+  operacionesCabecera    OperacionCabecera[]
+
+  @@map("proveedor")
+}
+
+model Usuario {
+  id            Int      @id @default(autoincrement()) @map("id_usuario")
+  username      String   @unique @db.VarChar(50)
+  passwordHash  String   @map("password_hash") @db.VarChar(255)
+  nombreCompleto String  @map("nombre_completo") @db.VarChar(150)
+  email         String?  @unique @db.VarChar(150)
+  rol           String   @default("EMPLEADO") @db.VarChar(30)
+  idTienda      Int      @map("id_tienda")
+  activo        Boolean  @default(true)
+  fechaCreacion DateTime @default(now()) @map("fecha_creacion")
+
+  tienda              Tienda              @relation(fields: [idTienda], references: [id])
+  operacionesCabecera OperacionCabecera[]
+  cajaMovimientos     CajaMovimiento[]
+  iaLogConsultas      IaLogConsulta[]
+
+  @@map("usuario")
+}
+
+model Categoria {
+  id               Int        @id @default(autoincrement()) @map("id_categoria")
+  nombre           String     @db.VarChar(100)
+  descripcion      String?    @db.VarChar(300)
+  idCategoriaPadre Int?       @map("id_categoria_padre")
+  activa           Boolean    @default(true)
+  fechaCreacion    DateTime   @default(now()) @map("fecha_creacion")
+
+  categoriaPadre   Categoria?  @relation("CategoriaJerarquia", fields: [idCategoriaPadre], references: [id])
+  subcategorias    Categoria[] @relation("CategoriaJerarquia")
+  productos        Producto[]
+
+  @@map("categoria")
+}
+
+// ============================================================
+// CLIENTES Y GRADUACIONES - Gestión Clínica
+// ============================================================
+
+model Cliente {
+  id              Int       @id @default(autoincrement()) @map("id_cliente")
+  tipoDocumento   String    @map("tipo_documento") @db.VarChar(10) // DNI, NIF, NIE, PASAPORTE
+  numeroDocumento String    @unique @map("numero_documento") @db.VarChar(20)
+  nombre          String    @db.VarChar(100)
+  apellidos       String    @db.VarChar(150)
+  fechaNacimiento DateTime? @map("fecha_nacimiento") @db.Date
+  sexo            String?   @db.VarChar(1) // M, F
+  direccion       String?   @db.VarChar(300)
+  ciudad          String?   @db.VarChar(100)
+  codigoPostal    String?   @map("codigo_postal") @db.VarChar(10)
+  telefono        String?   @db.VarChar(20)
+  email           String?   @db.VarChar(150)
+  observaciones   String?   @db.Text
+  fechaAlta       DateTime  @default(now()) @map("fecha_alta")
+
+  graduaciones         ClienteGraduacion[]
+  operacionesCabecera  OperacionCabecera[]
+
+  @@map("cliente")
+}
+
+model ClienteGraduacion {
+  id          Int      @id @default(autoincrement()) @map("id_graduacion")
+  idCliente   Int      @map("id_cliente")
+  fecha       DateTime @default(now())
+
+  // Ojo Derecho (OD)
+  odEsfera    Decimal? @map("od_esfera")    @db.Decimal(4, 2)
+  odCilindro  Decimal? @map("od_cilindro")  @db.Decimal(4, 2)
+  odEje       Int?     @map("od_eje")
+  odAdicion   Decimal? @map("od_adicion")   @db.Decimal(4, 2)
+  odAv        String?  @map("od_av")        @db.VarChar(20)
+  odDnp       Decimal? @map("od_dnp")       @db.Decimal(4, 2)
+  odAltura    Decimal? @map("od_altura")    @db.Decimal(4, 2)
+
+  // Ojo Izquierdo (OI)
+  oiEsfera    Decimal? @map("oi_esfera")    @db.Decimal(4, 2)
+  oiCilindro  Decimal? @map("oi_cilindro")  @db.Decimal(4, 2)
+  oiEje       Int?     @map("oi_eje")
+  oiAdicion   Decimal? @map("oi_adicion")   @db.Decimal(4, 2)
+  oiAv        String?  @map("oi_av")        @db.VarChar(20)
+  oiDnp       Decimal? @map("oi_dnp")       @db.Decimal(4, 2)
+  oiAltura    Decimal? @map("oi_altura")    @db.Decimal(4, 2)
+
+  tipoLente   String?  @map("tipo_lente")   @db.VarChar(50)
+  observaciones String? @db.Text
+
+  cliente     Cliente  @relation(fields: [idCliente], references: [id], onDelete: Cascade)
+
+  @@map("cliente_graduacion")
+}
+
+// ============================================================
+// CATÁLOGO DE PRODUCTOS
+// ============================================================
+
+model Producto {
+  id            Int      @id @default(autoincrement()) @map("id_producto")
+  codigo        String   @unique @db.VarChar(50)
+  nombre        String   @db.VarChar(200)
+  descripcion   String?  @db.VarChar(500)
+  marca         String?  @db.VarChar(100)
+  modelo        String?  @db.VarChar(100)
+  precioCoste   Decimal  @map("precio_coste")  @db.Decimal(10, 2)
+  precioVenta   Decimal  @map("precio_venta")  @db.Decimal(10, 2)
+  idCategoria   Int?     @map("id_categoria")
+  idProveedor   Int?     @map("id_proveedor")
+  imageUrl      String?  @map("image_url")     @db.Text
+  activo        Boolean  @default(true)
+  fechaCreacion DateTime @default(now()) @map("fecha_creacion")
+
+  categoria     Categoria?         @relation(fields: [idCategoria], references: [id])
+  proveedor     Proveedor?         @relation(fields: [idProveedor], references: [id])
+  atributos     ProductoAtributos?
+  stocks        Stock[]
+  operacionLineas OperacionLinea[]
+
+  @@map("producto")
+}
+
+model ProductoAtributos {
+  id           Int     @id @default(autoincrement()) @map("id_atributo")
+  idProducto   Int     @unique @map("id_producto")
+  calibre      String? @db.VarChar(20)
+  puente       String? @db.VarChar(20)
+  varilla      String? @db.VarChar(20)
+  colorCodigo  String? @map("color_codigo") @db.VarChar(50)
+  colorDescripcion String? @map("color_descripcion") @db.VarChar(100)
+  material     String? @db.VarChar(50)
+  tipoMontura  String? @map("tipo_montura") @db.VarChar(50)
+  genero       String? @db.VarChar(20)
+
+  producto     Producto @relation(fields: [idProducto], references: [id], onDelete: Cascade)
+
+  @@map("producto_atributos")
+}
+
+// ============================================================
+// INVENTARIO Y STOCK
+// ============================================================
+
+model Stock {
+  id                 Int     @id @default(autoincrement()) @map("id_stock")
+  idTienda           Int     @map("id_tienda")
+  idProducto         Int     @map("id_producto")
+  cantidadActual     Int     @default(0) @map("cantidad_actual")
+  stockMinimoAlerta  Int     @default(5) @map("stock_minimo_alerta")
+
+  tienda             Tienda   @relation(fields: [idTienda], references: [id])
+  producto           Producto @relation(fields: [idProducto], references: [id])
+
+  @@unique([idTienda, idProducto])
+  @@map("stock")
+}
+
+// ============================================================
+// OPERACIONES TRANSACCIONALES (Ventas, Compras, Traspasos)
+// ============================================================
+
+model OperacionCabecera {
+  id                Int       @id @default(autoincrement()) @map("id_operacion")
+  tipo              String    @db.VarChar(20) // VENTA, COMPRA, TRASPASO
+  fecha             DateTime  @default(now())
+  idTienda          Int       @map("id_tienda")
+  idCliente         Int?      @map("id_cliente")
+  idUsuario         Int       @map("id_usuario")
+  idProveedor       Int?      @map("id_proveedor")
+  idTiendaOrigen    Int?      @map("id_tienda_origen")
+  idTiendaDestino   Int?      @map("id_tienda_destino")
+  totalOperacion    Decimal   @default(0) @map("total_operacion") @db.Decimal(12, 2)
+  formaPago         String?   @map("forma_pago") @db.VarChar(30)
+  estado            String    @default("BORRADOR") @db.VarChar(20) // BORRADOR, CERRADA, ANULADA
+  observaciones     String?   @db.Text
+  fechaCreacion     DateTime  @default(now()) @map("fecha_creacion")
+
+  tienda            Tienda     @relation("TiendaPrincipal", fields: [idTienda], references: [id])
+  cliente           Cliente?   @relation(fields: [idCliente], references: [id])
+  usuario           Usuario    @relation(fields: [idUsuario], references: [id])
+  proveedor         Proveedor? @relation(fields: [idProveedor], references: [id])
+  tiendaOrigen      Tienda?    @relation("TraspasoOrigen", fields: [idTiendaOrigen], references: [id])
+  tiendaDestino     Tienda?    @relation("TraspasoDestino", fields: [idTiendaDestino], references: [id])
+  lineas            OperacionLinea[]
+  cajaMovimientos   CajaMovimiento[]
+
+  @@map("operacion_cabecera")
+}
+
+model OperacionLinea {
+  id              Int     @id @default(autoincrement()) @map("id_linea")
+  idOperacion     Int     @map("id_operacion")
+  idProducto      Int     @map("id_producto")
+  cantidad        Int
+  precioMomento   Decimal @map("precio_momento") @db.Decimal(10, 2)
+  subtotal        Decimal @db.Decimal(12, 2)
+
+  operacion       OperacionCabecera @relation(fields: [idOperacion], references: [id], onDelete: Cascade)
+  producto        Producto          @relation(fields: [idProducto], references: [id])
+
+  @@map("operacion_linea")
+}
+
+// ============================================================
+// CAJA Y MOVIMIENTOS FINANCIEROS
+// ============================================================
+
+model CajaMovimiento {
+  id            Int      @id @default(autoincrement()) @map("id_movimiento")
+  idTienda      Int      @map("id_tienda")
+  idOperacion   Int?     @map("id_operacion")
+  idUsuario     Int      @map("id_usuario")
+  tipo          String   @db.VarChar(20) // INGRESO, EGRESO
+  importe       Decimal  @db.Decimal(12, 2)
+  formaPago     String?  @map("forma_pago") @db.VarChar(30)
+  concepto      String?  @db.VarChar(300)
+  fecha         DateTime @default(now())
+
+  tienda        Tienda             @relation(fields: [idTienda], references: [id])
+  operacion     OperacionCabecera? @relation(fields: [idOperacion], references: [id])
+  usuario       Usuario            @relation(fields: [idUsuario], references: [id])
+
+  @@map("caja_movimiento")
+}
+
+// ============================================================
+// AUDITORÍA IA
+// ============================================================
+
+model IaLogConsulta {
+  id            Int      @id @default(autoincrement()) @map("id_log")
+  idUsuario     Int?     @map("id_usuario")
+  pregunta      String   @db.Text
+  sqlGenerado   String?  @map("sql_generado") @db.Text
+  respuesta     String?  @db.Text
+  fechaHora     DateTime @default(now()) @map("fecha_hora")
+
+  usuario       Usuario? @relation(fields: [idUsuario], references: [id])
+
+  @@map("ia_log_consulta")
+}

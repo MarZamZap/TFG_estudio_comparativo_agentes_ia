@@ -1,0 +1,193 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native"]
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Tienda {
+  id                 String               @id @default(cuid())
+  nombre             String
+  direccion          String?
+  telefono           String?
+  usuarios           Usuario[]
+  stocks             Stock[]
+  operaciones        OperacionCabecera[]
+  cajaMovimientos    CajaMovimiento[]
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+}
+
+model Usuario {
+  id                 String               @id @default(cuid())
+  tiendaId           String
+  tienda             Tienda               @relation(fields: [tiendaId], references: [id])
+  nombre             String
+  username           String               @unique
+  passwordHash       String
+  operaciones        OperacionCabecera[]
+  iaLogs             IaLogConsulta[]
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+}
+
+model Cliente {
+  id                 String               @id @default(cuid())
+  nombre             String
+  apellido           String
+  dni                String?              @unique
+  telefono           String?
+  email              String?              @unique
+  graduaciones       ClienteGraduacion[]
+  operaciones        OperacionCabecera[]
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+}
+
+model ClienteGraduacion {
+  id                 String               @id @default(cuid())
+  clienteId          String
+  cliente            Cliente              @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  odEsfera           Decimal              // Ojo Derecho
+  odCilindro         Decimal
+  odEje              Int
+  odAdicion          Decimal?
+  odAgudezaVisual    String?
+  oiEsfera           Decimal              // Ojo Izquierdo
+  oiCilindro         Decimal
+  oiEje              Int
+  oiAdicion          Decimal?
+  oiAgudezaVisual    String?
+  distanciaInter     Decimal?             // Distancia Interpupilar
+  notas              String?
+  fechaCreacion      DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+}
+
+model Categoria {
+  id                 String               @id @default(cuid())
+  nombre             String
+  idCategoriaPadre   String?
+  parent             Categoria?           @relation("CategoriaJerarquia", fields: [idCategoriaPadre], references: [id])
+  children           Categoria[]          @relation("CategoriaJerarquia")
+  productos          Producto[]
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+}
+
+model Proveedor {
+  id                 String               @id @default(cuid())
+  nombre             String
+  cif                String?              @unique
+  telefono           String?
+  email              String?
+  direccion          String?
+  productos          Producto[]
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+}
+
+model Producto {
+  id                 String               @id @default(cuid())
+  categoriaId        String
+  categoria          Categoria            @relation(fields: [categoriaId], references: [id])
+  nombre             String
+  descripcion        String?
+  precio             Decimal
+  coste              Decimal?             // Precio de compra a proveedor
+  proveedorId        String?              // Nullable temporalmente para migración
+  proveedor          Proveedor?           @relation(fields: [proveedorId], references: [id])
+  imageUrl           String?
+  codigoBarras       String?              @unique
+  atributo           ProductoAtributos?
+  stocks             Stock[]
+  operacionLineas    OperacionLinea[]
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+}
+
+model ProductoAtributos {
+  id                 String               @id @default(cuid())
+  productoId         String               @unique
+  producto           Producto             @relation(fields: [productoId], references: [id], onDelete: Cascade)
+  material           String?
+  color              String?
+  marca              String?
+  modelo             String?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+}
+
+model Stock {
+  id                 String               @id @default(cuid())
+  tiendaId           String
+  tienda             Tienda               @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+  productoId         String
+  producto           Producto             @relation(fields: [productoId], references: [id], onDelete: Cascade)
+  cantidad           Int                  @default(0)
+  stockMinimoAlerta  Int                  @default(0)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  @@unique([tiendaId, productoId])
+}
+
+model OperacionCabecera {
+  id                 String               @id @default(cuid())
+  tiendaId           String
+  tienda             Tienda               @relation(fields: [tiendaId], references: [id])
+  usuarioId          String
+  usuario            Usuario              @relation(fields: [usuarioId], references: [id])
+  clienteId          String?              // Nullable for compas/traspasos
+  cliente            Cliente?             @relation(fields: [clienteId], references: [id])
+  fecha              DateTime             @default(now())
+  tipo               String               // VENTA, COMPRA, TRASPASO
+  estado             String               @default("COMPLETADO") // PENDIENTE, COMPLETADO, CANCELADO
+  totalOperacion     Decimal              @default(0)
+  notas              String?
+  lineas             OperacionLinea[]
+  movimientoCaja     CajaMovimiento?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+}
+
+model OperacionLinea {
+  id                 String               @id @default(cuid())
+  operacionId        String
+  operacion          OperacionCabecera    @relation(fields: [operacionId], references: [id], onDelete: Cascade)
+  productoId         String
+  producto           Producto             @relation(fields: [productoId], references: [id])
+  cantidad           Int
+  precioUnitario     Decimal
+  subtotal           Decimal
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+}
+
+model CajaMovimiento {
+  id                 String               @id @default(cuid())
+  tiendaId           String
+  tienda             Tienda               @relation(fields: [tiendaId], references: [id])
+  operacionId        String?              @unique // Opcional, si viene de una operación
+  operacion          OperacionCabecera?   @relation(fields: [operacionId], references: [id])
+  tipoMovimiento     String               // INGRESO, EGRESO
+  monto              Decimal
+  concepto           String
+  fecha              DateTime             @default(now())
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+}
+
+model IaLogConsulta {
+  id                 String               @id @default(cuid())
+  usuarioId          String
+  usuario            Usuario              @relation(fields: [usuarioId], references: [id])
+  consulta           String
+  respuesta          String
+  fecha              DateTime             @default(now())
+}

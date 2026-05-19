@@ -1,0 +1,29 @@
+{
+  "version": 1.1,
+  "atDirectives": [
+    {
+      "name": "@custom-variant",
+      "description": "Defines a custom variant in Tailwind CSS v4."
+    },
+    {
+      "name": "@theme",
+      "description": "Configure your design system in Tailwind CSS v4."
+    },
+    {
+      "name": "@plugin",
+      "description": "Imports a Tailwind CSS plugin."
+    },
+    {
+      "name": "@utility",
+      "description": "Add custom utilities to Tailwind CSS v4."
+    },
+    {
+      "name": "@variant",
+      "description": "Add custom variants to Tailwind CSS v4."
+    },
+    {
+      "name": "@source",
+      "description": "Explicitly define your template files in Tailwind CSS v4."
+    }
+  ]
+}
